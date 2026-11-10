@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# voce - pronuncia un testo sullo speaker Bluetooth con Piper (in locale).
+# Uso: voce "testo"   oppure   echo "testo" | voce
+# Le frasi vanno in coda. Se lo speaker non e' connesso esce senza errori.
+# VOCE_DRY=1 stampa il testo dopo il dizionario, senza parlare.
+
+CONF="${VOCE_CONF:-${XDG_CONFIG_HOME:-$HOME/.config}/voce/voce.conf}"
+[ -r "$CONF" ] && . "$CONF"
+
+PIPER_DIR="${VOCE_PIPER_DIR:-$HOME/.local/share/piper}"
+SHARE_DIR="${VOCE_SHARE_DIR:-$HOME/.local/share/voce}"
+MODEL="${VOCE_MODEL:-$PIPER_DIR/voices/it_IT-paola-medium.onnx}"
+SINK="${VOCE_SINK:-}"                   # scritto da install.sh in voce.conf
+VOLUME="${VOCE_VOLUME:-100%}"
+LENGTH_SCALE="${VOCE_LENGTH_SCALE:-1.25}"
+SENTENCE_SILENCE="${VOCE_SENTENCE_SILENCE:-0.35}"
+LEAD_IN="${VOCE_LEAD_IN:-2.5}"          # secondi per svegliare l'amplificatore
+SPEECH_DELAY="${VOCE_SPEECH_DELAY:-150}" # millisecondi tra attacco e voce
+DICT="${VOCE_DICT:-$SHARE_DIR/pronuncia.tsv}"   # correzioni di pronuncia
+QUEUE_WAIT="${VOCE_QUEUE_WAIT:-120}"    # oltre questa attesa la frase viene scartata
+ATTACK="${VOCE_ATTACK:-$SHARE_DIR/attacco.wav}" # suono prima della frase, se esiste
+
+if [ "$#" -gt 0 ]; then
+  text="$*"
+else
+  text="$(cat)"
+fi
+[ -n "${text//[[:space:]]/}" ] || exit 0
+
+# Dizionario di pronuncia: una voce per riga, "parola<TAB>grafia da leggere".
+if [ -r "$DICT" ]; then
+  fixed="$(printf '%s' "$text" | perl -CSD -Mutf8 -e '
+    open(my $d, "<:encoding(UTF-8)", $ARGV[0]) or die;
+    my %r;
+    while (<$d>) { chomp; next if /^\s*(#|$)/; my ($k, $v) = split /\t/, $_, 2; $r{lc $k} = $v if defined $v; }
+    my $t = do { local $/; <STDIN> };
+    if (%r) {
+      my $re = join "|", map { quotemeta } sort { length $b <=> length $a } keys %r;
+      $t =~ s/\b($re)\b/$r{lc $1}/gi;
+    }
+    print $t;
+  ' "$DICT" 2>/dev/null)"
+  [ -n "$fixed" ] && text="$fixed"
+fi
+
+if [ -n "${VOCE_DRY:-}" ]; then
+  printf '%s\n' "$text"
+  exit 0
+fi
+
+sink_present() {
+  [ -n "$SINK" ] && pactl list short sinks 2>/dev/null | awk '{print $2}' | grep -qxF "$SINK"
+}
+sink_present || exit 0
+
+exec 9>"${XDG_RUNTIME_DIR:-/tmp}/voce.lock"
+flock -w "$QUEUE_WAIT" 9 || exit 0
+sink_present || exit 0
+
+work="$(mktemp -d)" || exit 1
+trap 'rm -rf "$work"' EXIT
+
+printf '%s\n' "$text" | "$PIPER_DIR/piper/piper" --model "$MODEL" \
+  --length_scale "$LENGTH_SCALE" --sentence_silence "$SENTENCE_SILENCE" \
+  --output_file "$work/speech.wav" >/dev/null 2>&1 || exit 1
+
+inputs=(-f lavfi -i "anullsrc=r=48000:cl=stereo:d=$LEAD_IN")
+[ -r "$ATTACK" ] && inputs+=(-i "$ATTACK")
+inputs+=(-i "$work/speech.wav")
+
+n=$(( (${#inputs[@]} - 2) / 2 ))
+# Il fruscio copre tutta la frase: senza silenzio digitale l'amplificatore resta acceso.
+inputs+=(-f lavfi -i "anoisesrc=c=pink:r=48000:a=0.003")
+fmt="aformat=sample_rates=48000:channel_layouts=stereo"
+filter=""; labels=""
+for ((i = 0; i < n; i++)); do
+  delay=""
+  ((i == n - 1)) && delay="adelay=$SPEECH_DELAY:all=1,"
+  filter+="[$i]$delay$fmt[a$i];"
+  labels+="[a$i]"
+done
+filter+="[$n]$fmt[bed];${labels}concat=n=$n:v=0:a=1[voice];[voice][bed]amix=inputs=2:duration=first:normalize=0"
+
+ffmpeg -y -loglevel error "${inputs[@]}" -filter_complex "$filter" \
+  -c:a pcm_s16le "$work/out.wav" || exit 1
+
+pactl set-sink-volume "$SINK" "$VOLUME" 2>/dev/null
+timeout 120 paplay --device="$SINK" "$work/out.wav"

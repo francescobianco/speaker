@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# voce-stop - hook Stop di Claude Code: pronuncia il sunto della risposta.
+# Cerca l'ultima riga che inizia con il marcatore; senza sunto dice "Ho finito."
+
+VOCE_BIN="${VOCE_BIN:-$HOME/.local/bin/voce}"
+MARK='🔊'
+
+input="$(cat)"
+msg="$(jq -r '.last_assistant_message // empty' <<<"$input" 2>/dev/null)"
+
+if [ -z "$msg" ]; then
+  transcript="$(jq -r '.transcript_path // empty' <<<"$input" 2>/dev/null)"
+  if [ -r "$transcript" ]; then
+    sleep 0.5
+    msg="$(tail -n 50 "$transcript" | jq -rs \
+      '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text] | last // empty' 2>/dev/null)"
+  fi
+fi
+
+line="$(printf '%s\n' "$msg" | grep "^$MARK" | tail -n 1)"
+line="${line#"$MARK"}"
+line="$(printf '%s' "$line" | tr -d '*`_' | sed 's/^[[:space:]]*//')"
+line="${line:0:200}"
+
+"$VOCE_BIN" "${line:-Ho finito.}"
