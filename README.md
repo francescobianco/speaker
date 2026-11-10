@@ -63,7 +63,7 @@ VOCE_ATTACCO=legno ./install.sh
 | `VOCE_VOLUME` | `100%` | Volume dello speaker, impostato a ogni frase |
 | `VOCE_LENGTH_SCALE` | `1.25` | Lentezza del parlato |
 | `VOCE_SENTENCE_SILENCE` | `0.35` | Pausa tra le frasi, in secondi |
-| `VOCE_LEAD_IN` | `2.5` | Secondi per svegliare lo speaker |
+| `VOCE_LEAD_IN` | `0.3` | Secondi per svegliare lo speaker |
 | `VOCE_SPEECH_DELAY` | `150` | Millisecondi tra attacco e voce |
 | `VOCE_MODEL` | paola | Percorso di un altro modello Piper |
 

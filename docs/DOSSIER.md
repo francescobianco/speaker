@@ -29,7 +29,7 @@ Piper non ha controlli per le emozioni: solo la punteggiatura cambia l'intonazio
 
 ## Regolazioni trovate a orecchio
 
-- **Inizio troncato.** Molti speaker tengono l'amplificatore spento durante il silenzio digitale. Si risolve con 2,5 secondi iniziali e un fruscio rosa quasi impercettibile (ampiezza 0,003).
+- **Inizio troncato.** Molti speaker tengono l'amplificatore spento durante il silenzio digitale. Si risolve con un breve margine iniziale e un fruscio rosa quasi impercettibile (ampiezza 0,003). Il margine è partito da 2,5 secondi, ma dava una sensazione di attesa: a orecchio 0,3 secondi sono risultati i migliori.
 - **Inizio impastato.** Il fruscio ora copre tutta la frase e la voce parte 150 ms dopo l'attacco.
 - **Velocità.** Con `length_scale` 1,25 e pause di 0,35 secondi tra le frasi la voce è comoda da seguire.
 - **Volume basso con uscita al 100%.** Il sistema riapplicava al flusso di `paplay` un volume salvato del 50% (-18 dB). Si risolve impostando esplicitamente il volume del flusso.
@@ -47,6 +47,10 @@ Il testo diventa fonemi con espeak-ng, poi il modello li trasforma in audio. Per
 | còpp-pia | `kˈɔpːpˈia` | circa 99 ms, scelta |
 
 Le grafie senza accento, come `cop-pia`, chiudono la "o": l'accento serve a mantenerla aperta.
+
+## Le domande
+
+Piper riceve il punto interrogativo, ma la salita finale è modesta. Su «Attesa ridotta: la pubblico su main?» la voce scendeva di circa un semitono, e sulle parole tronche o inglesi non sale. Le misure approssimative davano al massimo circa due semitoni di salita con un finale italiano piano. A orecchio nessuna variante con premessa ha convinto: la forma scelta è la domanda diretta e breve, come «Vuoi che la pubblichi?».
 
 ## Livelli di intervento su Piper
 
