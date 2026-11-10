@@ -85,4 +85,5 @@ ffmpeg -y -loglevel error "${inputs[@]}" -filter_complex "$filter" \
   -c:a pcm_s16le "$work/out.wav" || exit 1
 
 pactl set-sink-volume "$SINK" "$VOLUME" 2>/dev/null
-timeout 120 paplay --device="$SINK" "$work/out.wav"
+# Volume del flusso esplicito: altrimenti il sistema riapplica quello salvato per paplay.
+timeout 120 paplay --device="$SINK" --volume=65536 "$work/out.wav"

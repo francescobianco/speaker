@@ -32,6 +32,7 @@ Piper non ha controlli per le emozioni: solo la punteggiatura cambia l'intonazio
 - **Inizio troncato.** Molti speaker tengono l'amplificatore spento durante il silenzio digitale. Si risolve con 2,5 secondi iniziali e un fruscio rosa quasi impercettibile (ampiezza 0,003).
 - **Inizio impastato.** Il fruscio ora copre tutta la frase e la voce parte 150 ms dopo l'attacco.
 - **Velocità.** Con `length_scale` 1,25 e pause di 0,35 secondi tra le frasi la voce è comoda da seguire.
+- **Volume basso con uscita al 100%.** Il sistema riapplicava al flusso di `paplay` un volume salvato del 50% (-18 dB). Si risolve impostando esplicitamente il volume del flusso.
 - **Attacco.** Serve ad avvisare che arriva un messaggio. Una nota di kalimba sintetizzata è stata preferita a un tocco sul legno e a un doppio tocco, senza alcun beep elettronico.
 
 ## Pronuncia e doppie
